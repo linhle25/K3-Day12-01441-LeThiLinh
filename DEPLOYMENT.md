@@ -8,51 +8,51 @@
 
 ## Thông Tin Học Viên
 
-| Mục | Nội dung |
-|-----|----------|
-| Họ và tên | (điền họ tên) |
-| Mã học viên | (điền mã học viên) |
-| Repo | (điền link repo DAY12-...) |
+| Mục         | Nội dung                                             |
+| ----------- | ---------------------------------------------------- |
+| Họ và tên   | Lê Thị Linh                                          |
+| Mã học viên | 2A202601441                                          |
+| Repo        | https://github.com/linhle25/K3-Day12-01441-LeThiLinh |
 
 ## Service
 
-| Mục | Nội dung |
-|-----|----------|
-| Public URL | https://TODO-thay-bang-url-that.up.railway.app |
-| Platform | Railway / Render / Cloud Run — (điền platform bạn dùng) |
-| Ngày deploy | (điền ngày) |
+| Mục         | Nội dung                                            |
+| ----------- | --------------------------------------------------- |
+| Public URL  | https://day12-agent-production-a91e.up.railway.app/ |
+| Platform    | Railway                                             |
+| Ngày deploy | 2026-08-10                                          |
 
 ## Biến Môi Trường Đã Set Trên Cloud
 
 Ghi tên biến và **nguồn giá trị**, không ghi giá trị:
 
-| Biến | Đã set | Ghi chú |
-|------|--------|---------|
-| `PORT` | ✅ | platform tự gán |
-| `AGENT_API_KEY` | ✅ | đặt trong dashboard, không nằm trong repo |
-| `REDIS_URL` | ✅ | (điền: Redis add-on của platform / Upstash / ...) |
-| `RATE_LIMIT_PER_MINUTE` | ✅ | 10 |
-| `MONTHLY_BUDGET_USD` | ✅ | 10.0 |
-| `LOG_LEVEL` | ✅ | INFO |
+| Biến                    | Đã set | Ghi chú                                           |
+| ----------------------- | ------ | ------------------------------------------------- |
+| `PORT`                  | ✅     | platform tự gán                                   |
+| `AGENT_API_KEY`         | ✅     | đặt trong dashboard, không nằm trong repo         |
+| `REDIS_URL`             | ✅     | Redis add-on của Railway                       |
+| `RATE_LIMIT_PER_MINUTE` | ✅     | 10                                                |
+| `MONTHLY_BUDGET_USD`    | ✅     | 10.0                                              |
+| `LOG_LEVEL`             | ✅     | INFO                                              |
 
 ## Lệnh Kiểm Tra
 
-Thay `<URL>` bằng Public URL ở trên:
+Public URL:
 
 ```bash
 # 1. Liveness — mong đợi 200 {"status":"ok"}
-curl -i <URL>/health
+curl -i https://day12-agent-production-a91e.up.railway.app/health
 
 # 2. Readiness — mong đợi 200 {"status":"ready"} (đã nối được Redis)
-curl -i <URL>/ready
+curl -i https://day12-agent-production-a91e.up.railway.app/ready
 
 # 3. Không có API key — mong đợi 401
-curl -i -X POST <URL>/ask \
+curl -i -X POST https://day12-agent-production-a91e.up.railway.app/ask \
   -H "Content-Type: application/json" \
   -d '{"question":"Hello"}'
 
 # 4. Có API key — mong đợi 200 kèm câu trả lời
-curl -i -X POST <URL>/ask \
+curl -i -X POST https://day12-agent-production-a91e.up.railway.app/ask \
   -H "Content-Type: application/json" \
   -H "X-API-Key: $AGENT_API_KEY" \
   -H "X-User-Id: sv-test" \
@@ -60,7 +60,7 @@ curl -i -X POST <URL>/ask \
 
 # 5. Rate limit — gọi 15 lần, những lần cuối phải trả 429
 for i in $(seq 1 15); do
-  curl -s -o /dev/null -w "%{http_code} " -X POST <URL>/ask \
+  curl -s -o /dev/null -w "%{http_code} " -X POST https://day12-agent-production-a91e.up.railway.app/ask \
     -H "Content-Type: application/json" \
     -H "X-API-Key: $AGENT_API_KEY" \
     -H "X-User-Id: sv-test" \
@@ -73,21 +73,33 @@ done; echo
 Dán output của các lệnh trên vào đây:
 
 ```
-(điền output)
+/health
+{"status":"ok","service":"day12-agent","version":"1.0.0"}
+/ready
+{"status":"ready","redis":true}
+/ask - k cần API key
+HTTP 401
+/ask - có API key
+HTTP 200 OK
+{
+    "answer":  "CÃ¢u há»i hay. Deploy lÃ  gÃ¬ thÆ°á»Æ°á»£c giáº£i quyáº¿t báº±ng cÃ¡ch chuáº©n hÃ³a mÃ´i trÆ°á»t image cháº¡y giá»ng nhau á»
+}
+rate limit
+200 200 200 200 200 200 200 200 200 200 429 429 429 429 429
 ```
 
 ## Ảnh Chụp Màn Hình
 
 Đặt ảnh trong thư mục `screenshots/`:
 
-- `screenshots/dashboard.png` — trang quản lý service trên platform
-- `screenshots/health.png` — kết quả gọi `/health` từ trình duyệt hoặc curl
+- `screenshots/dashboard.png` — trang quản lý service Railway hiển thị Online
+- `screenshots/health.png` — kết quả gọi các endpoint live từ PowerShell
 
 ---
 
-## Nếu Dùng Phương Án Dự Phòng
+## Phương Án Dự Phòng
 
-Không đăng ký được tài khoản cloud? Vẫn nộp được bài, nhưng CP5 tối đa 60% điểm:
+Không sử dụng phương án dự phòng vì service đã deploy thành công trên Railway.
 
 1. Đặt `LOCAL_FALLBACK=true` trong `.env`
 2. Chạy `docker compose up -d` rồi kiểm tra `docker compose ps`
@@ -97,5 +109,5 @@ Không đăng ký được tài khoản cloud? Vẫn nộp được bài, nhưng
 5. Ghi rõ lý do không deploy được vào phần dưới đây:
 
 ```
-(điền lý do nếu dùng phương án dự phòng, ngược lại xóa mục này)
+Không áp dụng.
 ```
