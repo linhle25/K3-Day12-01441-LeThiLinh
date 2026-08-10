@@ -54,13 +54,33 @@ def get_cost_guard() -> CostGuard:
     return CostGuard(get_redis_client(), get_settings().monthly_budget_usd)
 
 
+def _close_cached_redis_clients() -> None:
+    """Đóng các kết nối Redis đã được khởi tạo trong process."""
+    clients = []
+    for provider in (get_store, get_rate_limiter, get_cost_guard):
+        if provider.cache_info().currsize:
+            clients.append(provider().client)
+
+    seen: set[int] = set()
+    for client in clients:
+        if id(client) in seen:
+            continue
+        seen.add(id(client))
+        close = getattr(client, "close", None)
+        if callable(close):
+            close()
+
+
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
     """CHO SẴN — chạy lúc app khởi động và lúc tắt."""
     lifecycle.install()
     log_event("service_started", service=SERVICE_NAME, version=SERVICE_VERSION)
-    yield
-    log_event("service_stopped", service=SERVICE_NAME)
+    try:
+        yield
+    finally:
+        _close_cached_redis_clients()
+        log_event("service_stopped", service=SERVICE_NAME)
 
 
 app = FastAPI(title="Day 12 Production Agent", version=SERVICE_VERSION, lifespan=lifespan)
@@ -80,7 +100,7 @@ def health():
     TODO (CP1 + CP4):
       - Đang tắt dần (``lifecycle.shutting_down``) → trả
         ``JSONResponse(status_code=503, content={"status": "shutting_down"})``
-      - Bình thường → ``{"status": "ok", "service": SERVICE_NAME,
+      - Bình thường → trả ``{"status": "ok", "service": SERVICE_NAME,
         "version": SERVICE_VERSION}`` (mặc định FastAPI trả 200).
 
     Endpoint này phải **nhẹ**: không gọi Redis, không query DB. Nó chỉ trả
@@ -201,4 +221,9 @@ if __name__ == "__main__":
     import uvicorn
 
     settings = get_settings()
-    uvicorn.run(app, host="0.0.0.0", port=settings.port)
+    uvicorn.run(
+        app,
+        host="0.0.0.0",
+        port=settings.port,
+        timeout_graceful_shutdown=30,
+    )
